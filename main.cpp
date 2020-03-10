@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
     if (argc < 2) {
         //std::cerr << "error: no input files" << std::endl;
 		//system("pause");
-		std::string f("../../../tests/test13.dimacs");
+		std::string f("../../../tests/hanoi4.cnf");
 		formula phi = DimacsParser::parse(f);
 		// std::cout << show_formula(phi) << std::endl;
 

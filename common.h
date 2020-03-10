@@ -89,8 +89,10 @@ struct graph {
 			fixed[to] = true;
 		}
 	}
-	std::vector<int> trace_conflict()
+	std::vector<int> trace_conflict(int max)
 	{
+		//int cur_max = 0;
+		//int cur_second_max = 0;
 		std::vector<int> result;
 		std::stack<int> node_stack;
 		std::vector<bool> visited(node_number+1, false);
@@ -103,23 +105,51 @@ struct graph {
 			{
 				continue;
 			}*/
-			if (from_size[node] == 0)
+			/*if (from_size[node] == 0)
 			{
 				result.push_back(node);
 				continue;
-			}
+			}*/
 			for (int i = 0; i < from_size[node]; i++)
 			{
 				int n = from_mat[node][i];
 				if (!visited[n])
 				{
 					visited[n] = true;
+					/*if (n < cur_second_max)
+					{
+						continue;
+					}*/
+					if (from_size[n] == 0)
+					{/*
+						if (n > cur_second_max)
+						{
+							if (n > cur_max)
+							{
+								cur_max = n;
+								cur_second_max = cur_max;
+							}
+							else
+							{
+								cur_second_max = n;
+							}
+							
+							if (cur_max == max)
+							{
+								return max;
+							}
+						}*/
+						result.push_back(n);
+						continue;
+					}
+					
 					node_stack.push(n);				
 				}
 			}
 		}
 		//std::cout << result.size() << std::endl;
-
+		//result.push_back(cur_max);
+		//result.push_back(cur_second_max);
 		return result;
 	}
 };
@@ -200,10 +230,20 @@ struct graph_
 };*/
 
 
+
 struct propagation
 {
 	int var;
 	int cls;
 	propagation(int var_, int cls_): var(var_), cls(cls_) { }
+	
 };
+
+struct cmp {
+	bool operator () (propagation a, propagation b)
+	{
+		return VAR(a.var) > VAR(b.var);
+	}
+};
+
 #endif //DPLL_COMMON_H

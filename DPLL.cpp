@@ -292,7 +292,7 @@ void DPLL::decide()
 	}
 	else
 	{
-		i = decision_path.back() + 1;
+		i = VAR(decision_path.back()) + 1;
 		//i = decision_path.back() + 1;
 	}
 	/*
@@ -364,65 +364,76 @@ int DPLL::backjump()
 	{
 		return 0;
 	}
-	std::vector<int> from;
-	std::vector<int> conflict_clause;
-	if (decision_size == 1)
-	{
-		conflict_clause = clause();
-	}
-	else
-	{
-		conflict_clause = implication_graph.trace_conflict();
-		for (const auto v : conflict_clause)
-		{
-			int abs_var = VAR(v);
-			if (abs_var != VAR(decision_path.back()))
-			{
-				from.push_back(abs_var);
-			}
-			//std::cout << v << " ";
-		}
-		//std::cout << std::endl;
-	}
-	
-	
-	
-	
-	
-	
-	
 	int result = -decision_path.back();
 	int last_decision = decision_path.back();
 	decision_path.pop_back();
-	//implication_graph.change_graph(VAR(last_decision));
-	
-	if (decision_path.size() == 0)
-	{
-		std::cout << last_decision << std::endl;
-		// implication_graph.nodes[VAR(last_decision)].from.clear();
-		implication_graph.from_size[VAR(last_decision)] = 0;
-		implication_graph.fixed[VAR(last_decision)] = true;
-	}
-	implication_graph.add_node(from, VAR(last_decision));
 
-	int count = 0;
-	// change path
-	while (decision_path.size() > 0)
+	int second_max = 0;
+	std::vector<int> from;
+	std::vector<int> conflict_clause;
+	if (false)//decision_size == 1)
 	{
-		//count++;
-		int second_last = decision_path.back(); // second last dicision
-		if (std::find(conflict_clause.begin(), conflict_clause.end(), second_last) != conflict_clause.end()) // not in conflict_clause
+		//conflict_clause.push_back(0);
+	}
+	else
+	{
+		implication_graph.from_mat[last_decision][0] = last_decision;
+		implication_graph.from_size[last_decision] = 1;
+		conflict_clause = implication_graph.trace_conflict(last_decision);
+		
+		for (const auto v : conflict_clause)
 		{
-			// std::cout << second_last << " " << *std::find(conflict_clause.begin(), (conflict_clause.end()), second_last) << std::endl;
-			// decision_path.push_back(-last_decision);
-			break;
+			int abs_var = VAR(v);
+			//from.push_back(abs_var);
+			if (abs_var > second_max)
+			{
+				second_max = abs_var;
+			}
+			//std::cout << v << " ";
 		}
-		last_decision = decision_path.back();
-		decision_path.pop_back();
-		//implication_graph.change_graph(VAR(last_decision));
+		//std::cout << std::endl;*/
+	}
+	
+	//implication_graph.change_graph(VAR(last_decision));
+
+
+	if (second_max)
+	{
+		// change path
+		while (decision_path.size() > 0)
+		{
+			//count++;
+			int second_last = decision_path.back(); // second last dicision
+			//if (std::find(conflict_clause.begin(), conflict_clause.end(), second_last) != conflict_clause.end()) // not in conflict_clause
+			if (second_last == second_max)
+			{
+				// std::cout << second_last << " " << *std::find(conflict_clause.begin(), (conflict_clause.end()), second_last) << std::endl;
+				// decision_path.push_back(-last_decision);
+				break;
+			}
+			last_decision = decision_path.back();
+			decision_path.pop_back();
+			//implication_graph.change_graph(VAR(last_decision));
+		}
+		if (decision_path.size() == 0)
+		{
+			std::cout << result << " ";
+			// implication_graph.nodes[VAR(last_decision)].from.clear();
+			implication_graph.from_size[VAR(result)] = 0;
+			implication_graph.fixed[VAR(result)] = true;
+		}
+	}
+	else
+	{
+		std::cout << result << " ";
+		// implication_graph.nodes[VAR(last_decision)].from.clear();
+		implication_graph.from_size[VAR(result)] = 0;
+		implication_graph.fixed[VAR(result)] = true;
 	}
 
-	//std::cout << count << " ";
+	
+	implication_graph.add_node(conflict_clause, VAR(result));
+	
 
 	// trace till the last decision, recover the modification
 	while (true)
@@ -641,7 +652,8 @@ bool DPLL::check_collision(int var)
 
 bool DPLL::propagate(std::vector<int> last_decisions)
 {
-    std::queue<propagation> props; // a queue
+    // std::queue<propagation> props; // a queue
+	std::queue<propagation> props;
 	for (int i = 0; i < last_decisions.size(); i++)
 	{
 		props.push(propagation(last_decisions[i], -1));
