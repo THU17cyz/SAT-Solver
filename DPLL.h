@@ -65,6 +65,9 @@ private:
     std::vector<int> true_clauses;
     std::vector<int> decision_path;
 
+	std::vector<int> origin_to_sorted;
+	std::vector<int> sorted_to_origin;
+
 	std::vector<int> ordered_vars;
 
 	int next_decision;
@@ -81,6 +84,7 @@ public:
     std::vector<step> prev_steps;
 	graph implication_graph;
     formula phi;
+	formula new_phi;
 };
 
 

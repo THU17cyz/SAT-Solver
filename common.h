@@ -32,6 +32,7 @@ struct formula {
     std::vector<clause> clauses;
 
     formula(int n, const std::vector<clause>& clauses): num_variable(n), clauses(clauses) {}
+	formula() {}
 };
 
 // A satisfying model (interpretation).
@@ -51,6 +52,7 @@ struct graph {
 	//std::vector<node> nodes;
 	int  from_mat[1024][64];
 	int from_size[1024];
+	bool fixed[1024];
 	//std::vector<int> desicion_nodes;
 	int node_number;
 	void initialize_graph(int node_num) 
@@ -75,12 +77,16 @@ struct graph {
 		bool all_fixed = true;
 		for (const auto &n : from)
 		{
-			if (VAR(n) == to)
+			if (VAR(n) == to || fixed[VAR(n)])
 			{
 				continue;
 			}
 			from_mat[to][from_size[to]++] = VAR(n);
-
+			all_fixed = false;
+		}
+		if (all_fixed && !from.empty())
+		{
+			fixed[to] = true;
 		}
 	}
 	std::vector<int> trace_conflict()

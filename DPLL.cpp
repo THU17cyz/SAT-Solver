@@ -4,19 +4,21 @@
 #include <iostream>
 #include "DPLL.h"
 
+
+
 bool DPLL::check_sat()
 {
     initialize();
     std::vector<int> singles;
     // single-literal clauses
     int count = 0;
-    for (const auto &c : phi.clauses)
+    for (const auto &c : new_phi.clauses)
     {
         if (left_undef_literals[count] == 1)
         {
             int var = c.back();
             singles.push_back(var);
-		    //implication_graph.nodes[VAR(var)].fixed = true;
+		    implication_graph.fixed[VAR(var)] = true;
         }
         count++;
     }
@@ -54,7 +56,7 @@ bool DPLL::check_sat()
 		}
 	}*/
 
-	for (int i = 1; i <= phi.num_variable; i++)
+	/*for (int i = 1; i <= phi.num_variable; i++)
 	{
 		for (int j = 1; j <= phi.num_variable - i; j++)
 		{
@@ -65,7 +67,7 @@ bool DPLL::check_sat()
 				ordered_vars[j + 1] = tmp;
 			}
 		}
-	}
+	}*/
 
     bool after_backjump = false;
 	int next_decision;
@@ -122,7 +124,7 @@ model DPLL::get_model()
 	model res;
 	for (int i = 1; i <= phi.num_variable; i++)
 	{
-		if (interpretation[i] == 1)
+		if (interpretation[origin_to_sorted[i]] == 1)
 		{
 			res[i] = true;
 		}
@@ -139,7 +141,7 @@ model DPLL::get_model()
 		bool flag = false;
 		for (const auto &l : c)
 		{
-			if (POSITIVE(l * interpretation[VAR(l)])) flag = true;
+			if (l > 0 && res[l] || l < 0 && !res[-l]) flag = true;
 		}
 		if (!flag)
 		{
@@ -169,6 +171,7 @@ void DPLL::initialize()
         satisfied_clauses.push_back(pos);
         not_satisfied_clauses.push_back(neg);
     }
+	new_phi.num_variable = phi.num_variable;
     int count = 0;
 	max_var_num = 0;
 	for (const auto &c : phi.clauses)
@@ -182,6 +185,7 @@ void DPLL::initialize()
     for (const auto &c : phi.clauses)
     {
 		clause_is_true.push_back(false);
+		new_phi.clauses.push_back(clause());
         for (const auto &var : c)
         {
             int abs_var = VAR(var);
@@ -194,7 +198,7 @@ void DPLL::initialize()
 			}
 			
             
-            // filter the variables that never appeared
+            /*// filter the variables that never appeared
             if (interpretation[abs_var] == 1)
             {
                 interpretation[abs_var] = 0;
@@ -207,9 +211,9 @@ void DPLL::initialize()
             else
             {
                 not_satisfied_clauses[abs_var].push_back(count);
-            }
+            }*/
         }
-        left_undef_literals.push_back(c.size());
+		left_undef_literals.push_back(c.size());
         count++;
     }
     clause_num = count;
@@ -219,6 +223,55 @@ void DPLL::initialize()
 	for (int i = 0; i <= phi.num_variable; i++)
 	{
 		ordered_vars.push_back(i);
+		origin_to_sorted.push_back(i);
+		sorted_to_origin.push_back(i);
+	}
+	
+	for (int i = 1; i <= phi.num_variable; i++)
+	{
+		for (int j = 1; j <= phi.num_variable - i; j++)
+		{
+			if (var_eval[sorted_to_origin[j]] < var_eval[sorted_to_origin[j + 1]]) // (satisfied_clauses[ordered_vars[j]].size() + not_satisfied_clauses[ordered_vars[j]].size() < satisfied_clauses[ordered_vars[j + 1]].size() + not_satisfied_clauses[ordered_vars[j + 1]].size()))
+			{
+				int tmp = sorted_to_origin[j];
+				sorted_to_origin[j] = sorted_to_origin[j + 1];
+				sorted_to_origin[j + 1] = tmp;
+			}
+		}
+	}
+	for (int i = 1; i <= phi.num_variable; i++)
+	{
+		origin_to_sorted[sorted_to_origin[i]] = i;
+	}
+
+	count = 0;
+	for (const auto &c : phi.clauses)
+	{
+		int v_count = 0;
+		for (const auto &var : c)
+		{
+			int abs_var = VAR(var);
+			int new_var = origin_to_sorted[abs_var];
+
+			// filter the variables that never appeared
+			if (interpretation[new_var] == 1)
+			{
+				interpretation[new_var] = 0;
+				undef_var_num++;
+			}
+			if (POSITIVE(var))
+			{
+				satisfied_clauses[new_var].push_back(count);
+				new_phi.clauses[count].push_back(new_var);
+			}
+			else
+			{
+				not_satisfied_clauses[new_var].push_back(count);
+				new_phi.clauses[count].push_back(-new_var);
+			}
+			v_count++;
+		}
+		count++;
 	}
 	
 	//std::sort(ordered_vars.begin() + 1, ordered_vars.end() - 1, bound_cmp);
@@ -239,6 +292,7 @@ void DPLL::decide()
 	}
 	else
 	{
+		i = decision_path.back() + 1;
 		//i = decision_path.back() + 1;
 	}
 	/*
@@ -251,11 +305,11 @@ void DPLL::decide()
     // choose the next undefined variable 
     for(; i <= phi.num_variable; i++)
     {
-        if (interpretation[ordered_vars[i]] == 0)
+        if (interpretation[i] == 0)
         {
-            decision_path.push_back(ordered_vars[i]);
+            decision_path.push_back(i);
 			//implication_graph.nodes[ordered_vars[i]].from.clear();
-			implication_graph.from_size[ordered_vars[i]] = 0;
+			implication_graph.from_size[i] = 0;
 			break;
         }
     }
@@ -305,46 +359,36 @@ int DPLL::backtrace()
 
 int DPLL::backjump()
 {
-	if (decision_path.size() == 0)
+	int decision_size = decision_path.size();
+	if (decision_size == 0)
 	{
 		return 0;
 	}
-	std::vector<int> conflict_clause = implication_graph.trace_conflict();
-
-	/*phi.clauses.push_back(conflict_clause);
-	clause_is_true.push_back(false);
-	left_undef_literals.push_back(conflict_clause.size() - 1);
 	std::vector<int> from;
-	for (const auto v : conflict_clause)
+	std::vector<int> conflict_clause;
+	if (decision_size == 1)
 	{
-		int abs_var = VAR(v);
-		if (interpretation[abs_var] == 1)
-		{
-			not_satisfied_clauses[abs_var].push_back(clause_num);
-		}
-		else
-		{
-			satisfied_clauses[abs_var].push_back(clause_num);
-		}
-		if (abs_var != VAR(decision_path.back()))
-		{
-			from.push_back(abs_var);
-		}
+		conflict_clause = clause();
 	}
-	clause_num++;*/
+	else
+	{
+		conflict_clause = implication_graph.trace_conflict();
+		for (const auto v : conflict_clause)
+		{
+			int abs_var = VAR(v);
+			if (abs_var != VAR(decision_path.back()))
+			{
+				from.push_back(abs_var);
+			}
+			//std::cout << v << " ";
+		}
+		//std::cout << std::endl;
+	}
 	
 	
-	std::vector<int> from;
-	for (const auto v : conflict_clause)
-	{
-		int abs_var = VAR(v);
-		if (abs_var != VAR(decision_path.back()))
-		{
-			from.push_back(abs_var);
-		}
-		//std::cout << v << " ";
-	}
-	//std::cout << std::endl;
+	
+	
+	
 	
 	
 	int result = -decision_path.back();
@@ -357,7 +401,7 @@ int DPLL::backjump()
 		std::cout << last_decision << std::endl;
 		// implication_graph.nodes[VAR(last_decision)].from.clear();
 		implication_graph.from_size[VAR(last_decision)] = 0;
-		//implication_graph.nodes[VAR(last_decision)].fixed = true;
+		implication_graph.fixed[VAR(last_decision)] = true;
 	}
 	implication_graph.add_node(from, VAR(last_decision));
 
@@ -402,7 +446,7 @@ int DPLL::find_unit(int clause_id)
     {
         return 0;
     }
-    for (const auto &v : phi.clauses[clause_id])
+    for (const auto &v : new_phi.clauses[clause_id])
     {
         if (interpretation[VAR(v)] == 0) 
         {           
@@ -423,7 +467,7 @@ bool DPLL::update(int var, int cls, std::queue<propagation>& prop)
     // check if contradiction occurs
     if (check_collision(var))
     {
-		implication_graph.add_node(phi.clauses[cls], 0);
+		implication_graph.add_node(new_phi.clauses[cls], 0);
         return false;
     }
 	if (cls == -1)
@@ -436,7 +480,7 @@ bool DPLL::update(int var, int cls, std::queue<propagation>& prop)
 	}
 	else
 	{
-		implication_graph.add_node(phi.clauses[cls], VAR(var));
+		implication_graph.add_node(new_phi.clauses[cls], VAR(var));
 	}
 	/*if (implication_graph.nodes[VAR(var)].fixed)
 	{
