@@ -7,13 +7,6 @@
 
 #include "common.h"
 
-struct step
-{
-    
-    int delta_true_clause_num;
-    int delta_interp;
-    step(int n, int interp): delta_true_clause_num(n), delta_interp(interp) {}
-};
 
 class DPLL {
 public:
@@ -53,7 +46,6 @@ private:
     int find_unit(int clause_id);
     bool propagate(std::vector<int> vars);
     bool reach_sat() { return true_clauses.size() == clause_num; }
-    bool has_decision() { return undef_var_num != 0; }
     bool check_collision(int var);
 
 
@@ -68,19 +60,15 @@ private:
 	std::vector<int> origin_to_sorted;
 	std::vector<int> sorted_to_origin;
 
-	std::vector<int> ordered_vars;
 
-	int next_decision;
 	int update_count;
 
-	int max_var_num;
+	unsigned int max_var_num;
 	std::vector<long long> var_eval;
 
 public:
     int last_decision;
-    int clause_num;
-    int var_num;
-    int undef_var_num;
+    unsigned int clause_num;
     std::vector<step> prev_steps;
 	graph implication_graph;
     formula phi;

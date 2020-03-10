@@ -60,7 +60,7 @@ public:
                 c.push_back(v);
             }
         }
-        assert(clauses.size() == m);
+        assert((int)clauses.size() == m);
 
         return formula(n, clauses);
     }

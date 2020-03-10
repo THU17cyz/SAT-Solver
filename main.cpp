@@ -56,6 +56,7 @@ int main(int argc, char **argv) {
 
 		auto duration = std::chrono::duration<float, std::milli>(end - start);
 		std::cout << "  time: " << duration.count() << " ms" << std::endl;
+		system("pause");
         //return 1;
     }
 
@@ -88,6 +89,5 @@ int main(int argc, char **argv) {
         auto duration = std::chrono::duration<float, std::milli>(end - start);
         std::cout << "  time: " << duration.count() << " ms" << std::endl;
     }
-	system("pause");
     return 0;
 }
