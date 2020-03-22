@@ -10,6 +10,7 @@ bool DPLL::check_sat()
 {
     initialize();
     std::vector<int> singles;
+
     // single-literal clauses
     int count = 0;
     for (const auto &c : new_phi.clauses)
@@ -34,6 +35,7 @@ bool DPLL::check_sat()
     while (true)
     {
 		std::vector<int> var;
+
         // after backjump, skip decide
         if (!after_backjump)
         {
@@ -60,7 +62,7 @@ bool DPLL::check_sat()
             }
             else
             {
-				//std::cout << jump_c << " " << update_count <<  std::endl;
+				// std::cout << jump_c << " " << update_count <<  std::endl;
                 return false;
             }
         }
@@ -68,7 +70,7 @@ bool DPLL::check_sat()
         {
             if (reach_sat()) 
             {
-				//std::cout << jump_c << " " << update_count << std::endl;
+				// std::cout << jump_c << " " << update_count << std::endl;
                 return true;
             }
             after_backjump = false;
@@ -78,7 +80,6 @@ bool DPLL::check_sat()
 
 model DPLL::get_model()
 {
-    // TODO: your code here, or in the header file
 	model res;
 	for (int i = 1; i <= phi.num_variable; i++)
 	{
@@ -91,22 +92,6 @@ model DPLL::get_model()
 			res[i] = false;
 		}
 	}
-	/*
-	test model
-	*/
-	for (const auto &c : phi.clauses)
-	{
-		bool flag = false;
-		for (const auto &l : c)
-		{
-			if ((l > 0 && res[l]) || (l < 0 && !res[-l])) flag = true;
-		}
-		if (!flag)
-		{
-			std::cout << "wrong!" << std::endl;
-			break;
-		}
-	}
     return res;
 }
 
@@ -117,6 +102,7 @@ void DPLL::initialize()
     satisfied_clauses.push_back(tmp);
     not_satisfied_clauses.push_back(tmp); // start from index 1
 	var_eval.push_back(0);
+
     // initialize empty vectors
     for (int i = 0; i < phi.num_variable; i++) 
     {
@@ -160,6 +146,7 @@ void DPLL::initialize()
 	
 	implication_graph.initialize_graph(phi.num_variable);
 
+	// rename the variables according to the frequency they appear in clauses
 	for (int i = 0; i <= phi.num_variable; i++)
 	{
 		origin_to_sorted.push_back(i);
@@ -170,7 +157,7 @@ void DPLL::initialize()
 	{
 		for (int j = 1; j <= phi.num_variable - i; j++)
 		{
-			if (var_eval[sorted_to_origin[j]] < var_eval[sorted_to_origin[j + 1]]) // (satisfied_clauses[ordered_vars[j]].size() + not_satisfied_clauses[ordered_vars[j]].size() < satisfied_clauses[ordered_vars[j + 1]].size() + not_satisfied_clauses[ordered_vars[j + 1]].size()))
+			if (var_eval[sorted_to_origin[j]] < var_eval[sorted_to_origin[j + 1]])
 			{
 				int tmp = sorted_to_origin[j];
 				sorted_to_origin[j] = sorted_to_origin[j + 1];
@@ -221,7 +208,6 @@ void DPLL::decide()
 	else
 	{
 		i = VAR(decision_path.back()) + 1;
-		//i = decision_path.back() + 1;
 	}
 
     // choose the next undefined variable 
@@ -230,7 +216,6 @@ void DPLL::decide()
         if (interpretation[i] == 0)
         {
             decision_path.push_back(i);
-			//implication_graph.nodes[ordered_vars[i]].from.clear();
 			implication_graph.from_size[i] = 0;
 			break;
         }
@@ -251,7 +236,6 @@ int DPLL::backtrace()
         decision_path.pop_back();
         if (last_decision > 0)
         {
-			// decision_path.push_back(-last_decision);
             break;
         }
     }
@@ -286,36 +270,25 @@ int DPLL::backjump()
 	int second_max = 0;
 	std::vector<int> from;
 	std::vector<int> conflict_clause;
-	if (decision_size == 1)
+
+	conflict_clause = implication_graph.trace_conflict(end);
+
+	for (const auto v : conflict_clause)
 	{
-		//conflict_clause.push_back(0);
-	}
-	else
-	{
-		implication_graph.from_mat[end][0] = end;
-		implication_graph.from_size[end] = 1;
-		conflict_clause = implication_graph.trace_conflict(end);
-		
-		for (const auto v : conflict_clause)
-		{
-			//from.push_back(abs_var);
-			if (v > second_max)
-			{
-				second_max = v;
-			}
-			//std::cout << v << " ";
+		if (v == end) {
+			continue;
 		}
-		//std::cout << std::endl;*/
+		if (v > second_max)
+		{
+			second_max = v;
+		}
 	}
 	
-
-
-	if (second_max)
+	if (second_max != 0)
 	{
-		// change path
+		// find the position to roll back
 		while (decision_path.size() > 0)
 		{
-			//count++;
 			if (decision_path.back() == second_max)
 			{
 				break;
@@ -325,21 +298,17 @@ int DPLL::backjump()
 		}
 		if (decision_path.size() == 0)
 		{
-			//std::cout << result << " ";
 			implication_graph.from_size[end] = 0;
 			implication_graph.fixed[end] = true;
 		}
 	}
 	else
 	{
-		//std::cout << result << " ";
 		implication_graph.from_size[end] = 0;
 		implication_graph.fixed[end] = true;
 	}
 
-	
 	implication_graph.add_node(conflict_clause, end);
-	
 
 	// trace till the last decision, recover the modification
 	while (true)
@@ -374,6 +343,8 @@ int DPLL::find_unit(int clause_id)
 bool DPLL::update(int var, int cls, std::queue<propagation>& prop)
 {
 	update_count++;
+
+	// check whether the variable is already assigned a value
 	int value = interpretation[VAR(var)];
 	if (value > 0)
 	{
@@ -405,13 +376,14 @@ bool DPLL::update(int var, int cls, std::queue<propagation>& prop)
 			return false;
 		}
 	}
-	// 可能重复建图
 
 	if (cls != -1)
 	{
 		implication_graph.add_node(new_phi.clauses[cls], VAR(var));
 	}	
 
+	// update the number of already true clauses, left undefined literals in every clause, etc.
+    // also find new units and add them to the queue
     int delta_true_clause_num = 0;
     if (POSITIVE(var))
     {
@@ -471,6 +443,7 @@ bool DPLL::update(int var, int cls, std::queue<propagation>& prop)
     return true;
 }
 
+// go back to a picked step
 void DPLL::rollback(int var, int delta_true_clause_num)
 {
     int abs_var = VAR(var);
@@ -490,6 +463,7 @@ void DPLL::rollback(int var, int delta_true_clause_num)
     }
 }
 
+// check if an assignment triggers a conflict
 bool DPLL::check_collision(int var)
 {
     int value = interpretation[VAR(var)];
@@ -500,7 +474,7 @@ bool DPLL::check_collision(int var)
     return false;
 }
 
-
+// unit propagation
 bool DPLL::propagate(std::vector<int> last_decisions)
 {
 	std::queue<propagation> props;
@@ -509,15 +483,16 @@ bool DPLL::propagate(std::vector<int> last_decisions)
 		props.push(propagation(last_decisions[i], -1));
 	}
     
+	// do until the queue is empty
     while (props.size() > 0)
     {
-        // update the stack top
+        // update the queue front
         int var = props.front().var;
 		int cls = props.front().cls;
         props.pop();
         if (!update(var, cls, props))
         {
-            return false;
+            return false; // a conflict occurs
         }
     }
     return true;

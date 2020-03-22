@@ -47,33 +47,41 @@ struct graph {
 	void initialize_graph(int node_num) 
 	{
 		node_number = node_num;
-
+		for (int i = 0; i < 1024; i++)
+		{
+			fixed[i] = false;
+			from_size[i] = 0;
+		}
 	};
+
+	// add a node (actually covering)
 	void add_node(std::vector<int> from, int to)
 	{
-		if (!from.empty())
+		/*if (!from.empty())
 		{
 			from_size[to] = 0;
-		}
-		// bool all_fixed = true;
+		}*/
+		int count = 0;
 		for (const auto &n : from)
 		{
-			if (VAR(n) == to || fixed[VAR(n)])
+			int abs_n = VAR(n);
+			if (abs_n == to || fixed[abs_n])
 			{
 				continue;
 			}
-			from_mat[to][from_size[to]++] = VAR(n);
-			//all_fixed = false;
+			from_mat[to][count] = abs_n;
+			count++;
 		}
+		from_size[to] = count;
 		if (from_size[to] == 0 && !from.empty())
 		{
 			fixed[to] = true;
 		}
 	}
+
+	// generate the conflict clause
 	std::vector<int> trace_conflict(int max)
 	{
-		//int cur_max = 0;
-		//int cur_second_max = 0;
 		std::vector<int> result;
 		std::stack<int> node_stack;
 		std::vector<bool> visited(node_number+1, false);
@@ -88,48 +96,23 @@ struct graph {
 				if (!visited[n])
 				{
 					visited[n] = true;
-					/*if (n < cur_second_max)
-					{
-						continue;
-					}*/
 					if (from_size[n] == 0)
-					{/*
-						if (n > cur_second_max)
-						{
-							if (n > cur_max)
-							{
-								cur_max = n;
-								cur_second_max = cur_max;
-							}
-							else
-							{
-								cur_second_max = n;
-							}
-							
-							if (cur_max == max)
-							{
-								return max;
-							}
-						}*/
+					{
 						result.push_back(n);
 						continue;
 					}
-					
 					node_stack.push(n);				
 				}
 			}
 		}
-		//std::cout << result.size() << std::endl;
-		//result.push_back(cur_max);
-		//result.push_back(cur_second_max);
 		return result;
 	}
 };
 
 struct propagation
 {
-	int var;
-	int cls;
+	int var; // propagated variable
+	int cls; // clause that caused the propagation
 	propagation(int var_, int cls_): var(var_), cls(cls_) { }
 };
 
